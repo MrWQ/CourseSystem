@@ -1,0 +1,56 @@
+参考https://code.ziqiangxuetang.com/django/django-nginx-deploy.html
+https://blog.csdn.net/guawawa311/article/details/83097933
+完全卸载sudo apt-get remove --purge python2
+1.运行开发服务器测试
+pip install virtualenv
+cd  项目目录
+	virtualenv --no-site-packages venv	--no-site-packages，这样，已经安装到系统Python环境中的所有第三方包都不会复制过来，这样，我们就得到了一个不带任何第三方包的“干净”的Python运行环境。虚拟环境的名字（此例中是 venv ）可以是任意的
+	virtualenv -p /usr/bin/python2.7 venv　　　　# -p参数指定Python解释器程序路径
+source venv/bin/activate	注意到命令提示符变了，有个(venv)前缀，表示当前环境是一个名为venv的Python环境。在venv环境下，用pip安装的包都被安装到venv这个环境下，系统Python环境不受任何影响。也就是说，venv环境是专门针对myproject这个应用创建的。
+退出当前的venv环境，使用deactivate命令：deactivate 
+git clone 下载项目
+	pip install django,py2neo,python-docx
+安装uwsgi及其依赖
+pip install uwsgi certifi neobolt urllib3 neotime
+
+liunx环境Neo4j下载地址：https://neo4j.com/download/other-releases/#releases(社区版免费)
+或者直接在服务器上使用命令下载：
+ curl -O http://dist.neo4j.org/neo4j-community-3.4.5-unix.tar.gz
+启动neo4j
+进入bin目录执行./neo4j start
+进入bin目录执行./neo4j stop
+进入bin目录执行./neo4j status
+
+2.使用 uwsgi 来部署
+sudo apt-get install python-dev nginx
+sudo pip install supervisor	安装 supervisor, 一个专门用来管理进程的工具，我们用它来管理 uwsgi 进程
+sudo pip install uwsgi --upgrade	安装 uwsgi
+uwsgi --http :8001 --chdir /path/to/project --home=/path/to/env --module project.wsgi	这样就可以跑了，--home 指定virtualenv 路径，如果没有可以去掉。project.wsgi 指的是 project/wsgi.py 文件
+
+3.使用supervisor来管理进程
+(sudo) pip install supervisor
+生成 supervisor 默认配置文件，比如我们放在 /etc/supervisord.conf 路径中：
+(sudo) echo_supervisord_conf > /etc/supervisord.conf
+打开 supervisor.conf 在最底部添加（每一行前面不要有空格，防止报错）：
+[program:zqxt]
+command=/path/to/uwsgi --http :8003 --chdir /path/to/zqxt --module zqxt.wsgi
+directory=/path/to/zqxt
+startsecs=0
+stopwaitsecs=0
+autostart=true
+autorestart=true
+command 中写上对应的命令，这样，就可以用 supervisor 来管理了。
+启动 supervisor：(sudo) supervisord -c /etc/supervisord.conf
+重启 zqxt 程序（项目）：(sudo) supervisorctl -c /etc/supervisord.conf restart zqxt
+启动，停止，或重启 supervisor 管理的某个程序 或 所有程序：(sudo) supervisorctl -c /etc/supervisord.conf [start|stop|restart] [program-name|all]
+
+4.配置 Nginx
+安装nginx：
+cd ~
+wget http://nginx.org/download/nginx-1.5.6.tar.gz
+tar xf nginx-1.5.6.tar.gz
+cd nginx-1.5.6
+./configure --prefix=/usr/local/nginx-1.5.6 \
+--with-http_stub_status_module \
+--with-http_gzip_static_module
+make && make install
